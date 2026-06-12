@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MOON – CPU Binary Game</title>
+  <meta name="description" content="MOON: juego educativo online donde manipulas registros de una CPU virtual para alcanzar un objetivo binario." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════ (sin pantalla de login) ════════ -->
+
+  <!-- ═══════════════════════════════════════ GAME SCREEN ═══ -->
+  <div id="screen-game" class="screen active">
+
+    <!-- Top bar -->
+    <header class="topbar">
+      <div class="topbar-brand">
+        <span class="brand-moon">MOON</span>
+        <span class="brand-sep">|</span>
+        <span class="brand-sub">CPU Challenge</span>
+      </div>
+      <div class="topbar-center" id="topbar-objective">
+        <div class="obj-label">COLA DE OBJETIVOS (A)</div>
+        <div class="targets-queue" id="targets-queue">
+          <!-- Slots rendered by JS -->
+          <div class="target-slot empty"></div>
+          <div class="target-slot empty"></div>
+          <div class="target-slot empty"></div>
+          <div class="target-slot empty"></div>
+        </div>
+      </div>
+      <div class="topbar-user">
+        <div class="user-stats">
+          <span class="stat-item" title="Partidas jugadas"><span class="stat-icon">🎮</span><span id="stat-played">0</span></span>
+          <span class="stat-item" title="Partidas ganadas"><span class="stat-icon">🏆</span><span id="stat-won">0</span></span>
+        </div>
+        <!-- Batería y Recarga -->
+        <div class="battery-section">
+          <div class="battery-display" id="battery-display" title="Energía restante">
+            <span class="battery-label">⚡ ENERGÍA</span>
+            <div class="battery-pips" id="battery-pips"></div>
+            <span class="battery-num"><span id="battery-val">3</span><span class="battery-max">/3</span></span>
+          </div>
+          <button id="btn-reload" class="btn btn-reload" title="Recargar energía y avanzar objetivos">RECARGAR ↻</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="game-main">
+
+      <!-- Registers: 4 filas horizontales, como el tablero físico -->
+      <section class="registers-section">
+        <div class="registers-grid" id="registers-grid">
+
+          <!-- ── Registro D ── -->
+          <div class="register-card" id="reg-D" data-reg="D">
+            <div class="reg-name">D</div>
+            <div class="reg-bits" id="bits-D">
+              <div class="bit-cell" data-pos="3"><span class="bit-val">0</span><span class="bit-pos">b3</span></div>
+              <div class="bit-cell" data-pos="2"><span class="bit-val">0</span><span class="bit-pos">b2</span></div>
+              <div class="bit-cell" data-pos="1"><span class="bit-val">0</span><span class="bit-pos">b1</span></div>
+              <div class="bit-cell" data-pos="0"><span class="bit-val">0</span><span class="bit-pos">b0</span></div>
+            </div>
+            <div class="reg-meta">
+              <span class="reg-dec" id="dec-D">0</span>
+              <span class="reg-hex" id="hex-D">0x0</span>
+            </div>
+          </div>
+
+          <!-- ── Registro C ── -->
+          <div class="register-card" id="reg-C" data-reg="C">
+            <div class="reg-name">C</div>
+            <div class="reg-bits" id="bits-C">
+              <div class="bit-cell" data-pos="3"><span class="bit-val">0</span><span class="bit-pos">b3</span></div>
+              <div class="bit-cell" data-pos="2"><span class="bit-val">0</span><span class="bit-pos">b2</span></div>
+              <div class="bit-cell" data-pos="1"><span class="bit-val">0</span><span class="bit-pos">b1</span></div>
+              <div class="bit-cell" data-pos="0"><span class="bit-val">0</span><span class="bit-pos">b0</span></div>
+            </div>
+            <div class="reg-meta">
+              <span class="reg-dec" id="dec-C">0</span>
+              <span class="reg-hex" id="hex-C">0x0</span>
+            </div>
+          </div>
+
+          <!-- ── Registro B ── -->
+          <div class="register-card" id="reg-B" data-reg="B">
+            <div class="reg-name">B</div>
+            <div class="reg-bits" id="bits-B">
+              <div class="bit-cell" data-pos="3"><span class="bit-val">0</span><span class="bit-pos">b3</span></div>
+              <div class="bit-cell" data-pos="2"><span class="bit-val">0</span><span class="bit-pos">b2</span></div>
+              <div class="bit-cell" data-pos="1"><span class="bit-val">0</span><span class="bit-pos">b1</span></div>
+              <div class="bit-cell" data-pos="0"><span class="bit-val">0</span><span class="bit-pos">b0</span></div>
+            </div>
+            <div class="reg-meta">
+              <span class="reg-dec" id="dec-B">0</span>
+              <span class="reg-hex" id="hex-B">0x0</span>
+            </div>
+          </div>
+
+          <!-- ── Registro A (objetivo) ── -->
+          <div class="register-card" id="reg-A" data-reg="A">
+            <div class="reg-name">A</div>
+            <div class="reg-bits" id="bits-A">
+              <div class="bit-cell" data-pos="3"><span class="bit-val">0</span><span class="bit-pos">b3</span></div>
+              <div class="bit-cell" data-pos="2"><span class="bit-val">0</span><span class="bit-pos">b2</span></div>
+              <div class="bit-cell" data-pos="1"><span class="bit-val">0</span><span class="bit-pos">b1</span></div>
+              <div class="bit-cell" data-pos="0"><span class="bit-val">0</span><span class="bit-pos">b0</span></div>
+            </div>
+            <div class="reg-meta">
+              <span class="reg-dec" id="dec-A">0</span>
+              <span class="reg-hex" id="hex-A">0x0</span>
+            </div>
+            <div class="reg-target-indicator hidden" id="target-A">🎯 OBJETIVO</div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Control panel -->
+      <section class="control-panel">
+        <div class="panel-title">INSTRUCCIÓN</div>
+
+        <div class="controls-row">
+
+          <div class="ctrl-group">
+            <label class="ctrl-label" for="sel-op">Operación</label>
+            <div class="op-selector" id="op-selector">
+              <button class="op-btn active" data-op="INC" data-cost="2">INC<span class="op-cost">-2⚡</span></button>
+              <button class="op-btn" data-op="DEC" data-cost="2">DEC<span class="op-cost">-2⚡</span></button>
+              <button class="op-btn" data-op="NOT" data-cost="1">NOT<span class="op-cost">-1⚡</span></button>
+              <button class="op-btn" data-op="ROL" data-cost="1">ROL<span class="op-cost">-1⚡</span></button>
+              <button class="op-btn" data-op="ROR" data-cost="1">ROR<span class="op-cost">-1⚡</span></button>
+              <button class="op-btn" data-op="MOV" data-cost="1">MOV<span class="op-cost">-1⚡</span></button>
+              <button class="op-btn" data-op="AND" data-cost="0.5">AND<span class="op-cost">½⚡</span></button>
+              <button class="op-btn" data-op="OR" data-cost="0.5">OR<span class="op-cost">½⚡</span></button>
+              <button class="op-btn" data-op="XOR" data-cost="0.5">XOR<span class="op-cost">½⚡</span></button>
+            </div>
+          </div>
+
+          <div class="ctrl-group" id="reg1-group">
+            <label class="ctrl-label" for="sel-reg1">Registro 1</label>
+            <div class="reg-selector" id="reg1-selector">
+              <button class="reg-btn active" data-reg="A">A</button>
+              <button class="reg-btn" data-reg="B">B</button>
+              <button class="reg-btn" data-reg="C">C</button>
+              <button class="reg-btn" data-reg="D">D</button>
+            </div>
+          </div>
+
+          <div class="ctrl-group" id="reg2-group">
+            <label class="ctrl-label" for="sel-reg2">Registro 2</label>
+            <div class="reg-selector" id="reg2-selector">
+              <button class="reg-btn" data-reg="A">A</button>
+              <button class="reg-btn active" data-reg="B">B</button>
+              <button class="reg-btn" data-reg="C">C</button>
+              <button class="reg-btn" data-reg="D">D</button>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="instr-preview" id="instr-preview">
+          <span class="preview-op">INC</span>
+          <span class="preview-r1">A</span>
+          <span class="preview-cost">(-2⚡)</span>
+        </div>
+
+        <button id="btn-execute" class="btn btn-execute">
+          <span class="btn-execute-icon">▶</span>
+          Ejecutar
+        </button>
+
+        <div class="move-counter">
+          Movimientos: <span id="move-count">0</span>
+        </div>
+
+        <button id="btn-new-game" class="btn btn-new">⟳ Nueva Partida</button>
+
+      </section>
+
+      <!-- History log -->
+      <section class="history-panel">
+        <div class="history-title">HISTORIAL</div>
+        <ul class="history-list" id="history-list">
+          <li class="history-empty">— sin operaciones aún —</li>
+        </ul>
+      </section>
+
+    </main>
+
+    <!-- Victory overlay -->
+    <div class="victory-overlay hidden" id="victory-overlay">
+      <div class="victory-card">
+        <div class="victory-icon">🌙</div>
+        <h2 class="victory-title">¡OBJETIVO ALCANZADO!</h2>
+        <p class="victory-sub">Registro A = <span id="victory-bits"></span></p>
+        <p class="victory-moves">Completado en <span id="victory-move-count"></span> movimiento(s)</p>
+        <button id="btn-next-round" class="btn btn-execute">Nueva Ronda</button>
+      </div>
+    </div>
+
+    <!-- Game Over overlay (sin bateria) -->
+    <div class="gameover-overlay hidden" id="gameover-overlay">
+      <div class="gameover-card">
+        <div class="gameover-icon">🔋</div>
+        <h2 class="gameover-title">SIN ENERGÍA</h2>
+        <p class="gameover-sub">Has perdido por falta de energía o por acumular demasiados objetivos.</p>
+        <p class="gameover-target">Último objetivo pendiente: <span id="gameover-bits"></span></p>
+        <button id="btn-retry" class="btn btn-execute">&#x21ba; Reintentar</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
