@@ -123,7 +123,10 @@
 
       <!-- Control panel -->
       <section class="control-panel">
-        <div class="panel-title">INSTRUCCIÓN</div>
+        <div class="panel-header">
+          <div class="panel-title">INSTRUCCIÓN</div>
+          <button id="btn-help" class="btn-help" title="Ver guía de operaciones">❓ Ayuda</button>
+        </div>
 
         <div class="controls-row">
 
@@ -210,8 +213,38 @@
         <div class="gameover-icon">🔋</div>
         <h2 class="gameover-title">SIN ENERGÍA</h2>
         <p class="gameover-sub">Has perdido por falta de energía o por acumular demasiados objetivos.</p>
+        
+        <div class="gameover-score-box">
+          <div class="score-title">🏆 OBJETIVOS CONSEGUIDOS 🏆</div>
+          <div class="score-number" id="gameover-score-val">0</div>
+          <div class="score-msg" id="gameover-score-msg"></div>
+        </div>
+
         <p class="gameover-target">Último objetivo pendiente: <span id="gameover-bits"></span></p>
         <button id="btn-retry" class="btn btn-execute">&#x21ba; Reintentar</button>
+      </div>
+    </div>
+
+    <!-- Help Modal (Guía para alumnos) -->
+    <div class="help-overlay hidden" id="help-overlay">
+      <div class="help-card">
+        <button id="btn-close-help" class="btn-close-help">❌</button>
+        <h2 class="help-title">📖 Guía de Operaciones</h2>
+        <p class="help-sub">¿Qué hace cada instrucción de la CPU?</p>
+        <div class="help-content">
+          <div class="help-item"><span class="h-badge">INC (-2⚡)</span> <strong>Suma 1</strong>. Ej: <code>0000</code> ➔ <code>0001</code></div>
+          <div class="help-item"><span class="h-badge">DEC (-2⚡)</span> <strong>Resta 1</strong>. Ej: <code>0001</code> ➔ <code>0000</code></div>
+          <div class="help-item"><span class="h-badge">NOT (-1⚡)</span> <strong>Invertir</strong>. Cambia ceros por unos. Ej: <code>1010</code> ➔ <code>0101</code></div>
+          <div class="help-item"><span class="h-badge">ROL (-1⚡)</span> <strong>Rotar Izquierda</strong>. El primer bit pasa al final. Ej: <code><b>1</b>010</code> ➔ <code>010<b>1</b></code></div>
+          <div class="help-item"><span class="h-badge">ROR (-1⚡)</span> <strong>Rotar Derecha</strong>. El último bit pasa al principio. Ej: <code>101<b>0</b></code> ➔ <code><b>0</b>101</code></div>
+          <div class="help-item"><span class="h-badge">MOV (-1⚡)</span> <strong>Copiar</strong>. Pega Reg1 en Reg2. Ej: <code>1111</code> ➔ <code>1111</code></div>
+          <div class="help-item"><span class="h-badge">AND (½⚡)</span> <strong>Y (intersección)</strong>. Solo da 1 si AMBOS son 1.<br>Ej: <code>1010</code> AND <code>1100</code> ➔ <code>1000</code></div>
+          <div class="help-item"><span class="h-badge">OR (½⚡)</span> <strong>O (unión)</strong>. Da 1 si ALGUNO es 1.<br>Ej: <code>1010</code> OR <code>0100</code> ➔ <code>1110</code></div>
+          <div class="help-item"><span class="h-badge">XOR (½⚡)</span> <strong>O exclusivo</strong>. Da 1 solo si son DIFERENTES.<br>Ej: <code>1010</code> XOR <code>1100</code> ➔ <code>0110</code></div>
+        </div>
+        <div class="help-footer">
+          Para más detalles de las reglas cooperativas, consulta el <a href="moon-manual-es.pdf" target="_blank" class="help-link">Manual Oficial del Juego (PDF)</a>.
+        </div>
       </div>
     </div>
 

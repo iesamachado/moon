@@ -43,7 +43,8 @@ const state = {
   won:      false,
   gameOver: false,
   played:   0,
-  wonCount: 0
+  wonCount: 0,
+  score:    0     // Objetivos conseguidos en la partida actual
 };
 
 // ──────────────────────────────────────────────────────────
@@ -86,6 +87,7 @@ function startNewGame() {
   state.won      = false;
   state.gameOver = false;
   state.energy   = MAX_ENERGY;
+  state.score    = 0;
 
   // Registro A siempre empieza en 0
   // B, C, D → valores aleatorios (modo aprendiz del manual)
@@ -154,6 +156,7 @@ function executeOperation() {
     // Objetivo conseguido
     state.targets.splice(matchedIdx, 1);
     state.wonCount++;
+    state.score++;
     $("stat-won").textContent = state.wonCount;
     renderTargetsQueue();
     
@@ -211,6 +214,20 @@ function triggerGameOver() {
   } else {
     $("gameover-bits").textContent = "----";
   }
+  
+  // Mensaje de puntuación
+  $("gameover-score-val").textContent = state.score;
+  const msg = $("gameover-score-msg");
+  if (state.score === 0) {
+    msg.textContent = "¡Ánimo! Seguro que en la próxima partida logras completar algún objetivo.";
+  } else if (state.score <= 2) {
+    msg.textContent = "¡Buen trabajo! Has resuelto algunos objetivos.";
+  } else if (state.score <= 5) {
+    msg.textContent = "¡Genial! Tienes buena lógica de programación 👏";
+  } else {
+    msg.textContent = "¡IMPRESIONANTE! Eres un Hacker de Nivel Dios 🚀🔥";
+  }
+
   $("gameover-overlay").classList.remove("hidden");
 }
 
@@ -408,6 +425,18 @@ function initEvents() {
 
   // Nueva partida
   $("btn-new-game").addEventListener("click", startNewGame);
+
+  // Ayuda (Pop-up)
+  const btnHelp = $("btn-help");
+  const btnCloseHelp = $("btn-close-help");
+  const helpOverlay = $("help-overlay");
+  if (btnHelp && btnCloseHelp && helpOverlay) {
+    btnHelp.addEventListener("click", () => helpOverlay.classList.remove("hidden"));
+    btnCloseHelp.addEventListener("click", () => helpOverlay.classList.add("hidden"));
+    helpOverlay.addEventListener("click", e => {
+      if (e.target === helpOverlay) helpOverlay.classList.add("hidden");
+    });
+  }
 
   // Nueva ronda (victoria)
   $("btn-next-round").addEventListener("click", startNewGame);
