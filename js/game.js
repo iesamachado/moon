@@ -6,15 +6,21 @@
 //   AND, OR, XOR      → ½ unidad
 // ═══════════════════════════════════════════════════════════
 
-"use strict";
+import { 
+  db, collection, addDoc, doc, getDoc, setDoc, updateDoc, increment, query, orderBy, limit, getDocs 
+} from "./firebase-config.js";
+import { setupAuthListener } from "./auth.js";
+
+// Usuario actual de Firebase
+let currentUser = null;
 
 // ──────────────────────────────────────────────────────────
 // CONSTANTES
 // ──────────────────────────────────────────────────────────
 const REGISTERS   = ["A", "B", "C", "D"];
 const BINARY_OPS  = ["MOV", "AND", "OR", "XOR"];
-const MASK_4BIT   = 0b1111;
 const MAX_ENERGY  = 3;   // Unidades de energía por turno (nivel normal, 1 jugador)
+const MAX_BITS    = 8;   // Límite técnico máximo de bits
 
 // Coste de energía de cada operación (del manual)
 const OP_COST = {
@@ -44,35 +50,48 @@ const state = {
   gameOver: false,
   played:   0,
   wonCount: 0,
-  score:    0     // Objetivos conseguidos en la partida actual
+  score:    0,    // Objetivos conseguidos en la partida actual
+  highScore:0,    // Récord máximo del usuario
+  numBits:  4     // Bits dinámicos de la arquitectura de la CPU
+};
+
+// ──────────────────────────────────────────────────────────
+// UTILIDADES DINÁMICAS (dependen de numBits)
+// ──────────────────────────────────────────────────────────
+const $    = id => document.getElementById(id);
+const mask = () => (1 << state.numBits) - 1;
+const bin  = n  => (n & mask()).toString(2).padStart(state.numBits, "0");
+const hex  = n  => "0x" + (n & mask()).toString(16).toUpperCase();
+const rnd  = () => Math.floor(Math.random() * (1 << state.numBits));
+
+const generateAvatar = (uid) => `https://api.dicebear.com/7.x/bottts/svg?seed=${uid}&backgroundColor=00e5ff,transparent`;
+const anonymizeName = (fullName) => {
+  if (!fullName) return "Alumno Anónimo";
+  const parts = fullName.trim().split(" ");
+  if (parts.length === 1) return parts[0];
+  const first = parts[0];
+  const initials = parts.slice(1).map(p => p.charAt(0).toUpperCase()).join("");
+  return `${first} ${initials}`;
 };
 
 // ──────────────────────────────────────────────────────────
 // OPERACIONES CPU
 // ──────────────────────────────────────────────────────────
 const ops = {
-  INC: (r, r1)     => { r[r1] = (r[r1] + 1) & MASK_4BIT; },
-  DEC: (r, r1)     => { r[r1] = (r[r1] - 1 + 16) & MASK_4BIT; },
-  NOT: (r, r1)     => { r[r1] = (~r[r1]) & MASK_4BIT; },
-  // ROL: desplaza cada bit a la izquierda; el bit 3 (MSB) ocupa la posición del bit 0
-  ROL: (r, r1)     => { r[r1] = ((r[r1] << 1) | (r[r1] >> 3)) & MASK_4BIT; },
-  // ROR: desplaza cada bit a la derecha; el bit 0 (LSB) ocupa la posición del bit 3
-  ROR: (r, r1)     => { r[r1] = ((r[r1] >> 1) | ((r[r1] & 1) << 3)) & MASK_4BIT; },
+  INC: (r, r1)     => { r[r1] = (r[r1] + 1) & mask(); },
+  DEC: (r, r1)     => { r[r1] = (r[r1] - 1 + (1 << state.numBits)) & mask(); },
+  NOT: (r, r1)     => { r[r1] = (~r[r1]) & mask(); },
+  // ROL: desplaza a la izquierda; el bit más significativo pasa a la posición 0
+  ROL: (r, r1)     => { r[r1] = ((r[r1] << 1) | (r[r1] >> (state.numBits - 1))) & mask(); },
+  // ROR: desplaza a la derecha; el bit menos significativo pasa a la posición más significativa
+  ROR: (r, r1)     => { r[r1] = ((r[r1] >> 1) | ((r[r1] & 1) << (state.numBits - 1))) & mask(); },
   // MOV: copia Registro 1 (origen) → Registro 2 (destino)
   MOV: (r, r1, r2) => { r[r2] = r[r1]; },
-  // AND/OR/XOR: resultado → Registro 1 (el segundo se queda igual, según el manual)
-  AND: (r, r1, r2) => { r[r1] = (r[r1] & r[r2]) & MASK_4BIT; },
-  OR:  (r, r1, r2) => { r[r1] = (r[r1] | r[r2]) & MASK_4BIT; },
-  XOR: (r, r1, r2) => { r[r1] = (r[r1] ^ r[r2]) & MASK_4BIT; }
+  // AND/OR/XOR: resultado → Registro 1
+  AND: (r, r1, r2) => { r[r1] = (r[r1] & r[r2]) & mask(); },
+  OR:  (r, r1, r2) => { r[r1] = (r[r1] | r[r2]) & mask(); },
+  XOR: (r, r1, r2) => { r[r1] = (r[r1] ^ r[r2]) & mask(); }
 };
-
-// ──────────────────────────────────────────────────────────
-// UTILIDADES
-// ──────────────────────────────────────────────────────────
-const $   = id => document.getElementById(id);
-const bin = n  => (n & MASK_4BIT).toString(2).padStart(4, "0");
-const hex = n  => "0x" + (n & MASK_4BIT).toString(16).toUpperCase();
-const rnd = () => Math.floor(Math.random() * 16);  // valor 4-bit aleatorio
 
 function fmtCost(cost) {
   return cost === 0.5 ? "½⚡" : `-${cost}⚡`;
@@ -158,6 +177,14 @@ function executeOperation() {
     state.wonCount++;
     state.score++;
     $("stat-won").textContent = state.wonCount;
+    
+    checkLevelUp();
+    
+    // Auto-añadir nuevo objetivo
+    let newTarget;
+    do { newTarget = rnd(); } while (newTarget === 0 || state.targets.includes(newTarget));
+    state.targets.unshift(newTarget);
+    
     renderTargetsQueue();
     
     // Efecto visual de acierto
@@ -169,6 +196,29 @@ function executeOperation() {
   if (state.energy <= 0 && state.targets.length >= 4) {
     triggerGameOver();
   }
+}
+
+function checkLevelUp() {
+  const expectedBits = Math.min(MAX_BITS, 4 + Math.floor(state.score / 10));
+  if (expectedBits > state.numBits) {
+    state.numBits = expectedBits;
+    showLevelUpNotification(expectedBits);
+    
+    // Re-renderizar todos los registros para forzar la recreación del HTML
+    REGISTERS.forEach(r => renderRegister(r, null));
+  }
+}
+
+function showLevelUpNotification(bits) {
+  const toast = document.createElement("div");
+  toast.className = "level-up-toast";
+  toast.innerHTML = `🚀 Nivel superado! Arquitectura ampliada a ${bits} BITS`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.classList.add("show"), 10);
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => toast.remove(), 500);
+  }, 3000);
 }
 
 function reloadEnergy() {
@@ -228,7 +278,44 @@ function triggerGameOver() {
     msg.textContent = "¡IMPRESIONANTE! Eres un Hacker de Nivel Dios 🚀🔥";
   }
 
+  // Guardar en Firebase si hay usuario logueado
+  if (currentUser) {
+    saveGameToFirebase(state.score, state.numBits);
+  }
+
   $("gameover-overlay").classList.remove("hidden");
+}
+
+async function saveGameToFirebase(score, maxBits) {
+  try {
+    const userRef = doc(db, "users", currentUser.uid);
+    const gamesRef = collection(userRef, "games");
+    
+    // Guardar la partida en el historial
+    await addDoc(gamesRef, {
+      score: score,
+      maxBits: maxBits,
+      timestamp: new Date()
+    });
+
+    // Actualizar los agregados del usuario (récord, jugadas, totales)
+    const updates = {
+      played: increment(1),
+      wonCount: increment(score)
+    };
+    if (score > state.highScore) {
+      updates.highScore = score;
+      state.highScore = score; // actualizamos local
+    }
+
+    await setDoc(userRef, updates, { merge: true });
+
+    // Refrescar los agregados desde la BD para que la UI se actualice
+    fetchUserStats(currentUser.uid);
+    
+  } catch (error) {
+    console.error("Error guardando partida en Firebase:", error);
+  }
 }
 
 // Efecto visual cuando se intenta ejecutar sin energía
@@ -251,9 +338,22 @@ function renderRegister(reg, prevValue) {
   $(`hex-${reg}`).textContent = hex(val);
   $(`dec-${reg}`).textContent = val;
 
-  const bitCells = $(`bits-${reg}`).querySelectorAll(".bit-cell");
+  const container = $(`bits-${reg}`);
+  
+  if (container.children.length !== state.numBits) {
+    container.innerHTML = "";
+    for (let i = state.numBits - 1; i >= 0; i--) {
+      const cell = document.createElement("div");
+      cell.className = "bit-cell";
+      cell.dataset.pos = i;
+      cell.innerHTML = `<span class="bit-power">${1 << i}</span><span class="bit-val">0</span><span class="bit-pos">b${i}</span>`;
+      container.appendChild(cell);
+    }
+  }
+
+  const bitCells = container.querySelectorAll(".bit-cell");
   bitCells.forEach((cell, idx) => {
-    const bitIndex = 3 - idx;
+    const bitIndex = state.numBits - 1 - idx;
     const bitVal   = (val >> bitIndex) & 1;
     const prevBit  = prevValue !== null ? (prevValue >> bitIndex) & 1 : bitVal;
 
@@ -438,6 +538,21 @@ function initEvents() {
     });
   }
 
+  // Ranking (Pop-up)
+  const btnRanking = $("btn-ranking");
+  const btnCloseRanking = $("btn-close-ranking");
+  const rankingOverlay = $("ranking-overlay");
+  if (btnRanking && btnCloseRanking && rankingOverlay) {
+    btnRanking.addEventListener("click", () => {
+      rankingOverlay.classList.remove("hidden");
+      loadRanking();
+    });
+    btnCloseRanking.addEventListener("click", () => rankingOverlay.classList.add("hidden"));
+    rankingOverlay.addEventListener("click", e => {
+      if (e.target === rankingOverlay) rankingOverlay.classList.add("hidden");
+    });
+  }
+
   // Nueva ronda (victoria)
   $("btn-next-round").addEventListener("click", startNewGame);
 
@@ -466,6 +581,73 @@ function initEvents() {
   `;
   document.head.appendChild(style);
 })();
+
+// ─────────────────────────────────────────────────────────
+// AUTENTICACIÓN LOCAL PARA EL JUEGO
+// ─────────────────────────────────────────────────────────
+setupAuthListener((user, isTeacher, profile) => {
+  if (user) {
+    currentUser = user;
+    $("user-avatar").src = profile.avatarUrl;
+    if($("user-name")) $("user-name").textContent = profile.anonName;
+    fetchUserStats(user.uid);
+  }
+});
+
+async function fetchUserStats(uid) {
+  try {
+    const docSnap = await getDoc(doc(db, "users", uid));
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      state.played = data.played || 0;
+      state.wonCount = data.wonCount || 0;
+      state.highScore = data.highScore || 0;
+      $("stat-played").textContent = state.played;
+      $("stat-won").textContent = state.wonCount;
+    }
+  } catch (error) {
+    console.error("Error recuperando estadísticas:", error);
+  }
+}
+
+// ──────────────────────────────────────────────────────────
+// RANKING GLOBAL
+// ──────────────────────────────────────────────────────────
+async function loadRanking() {
+  const list = $("ranking-list");
+  list.innerHTML = `<div class="ranking-loading">Conectando con el satélite...</div>`;
+  try {
+    const q = query(collection(db, "users"), orderBy("highScore", "desc"), limit(10));
+    const snapshot = await getDocs(q);
+    
+    list.innerHTML = "";
+    if (snapshot.empty) {
+      list.innerHTML = `<div class="ranking-item">Aún no hay datos de hackers.</div>`;
+      return;
+    }
+    
+    let pos = 1;
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data();
+      const score = data.highScore || 0;
+      const name = data.displayNameAnonymized || "Hacker Desconocido";
+      const avatar = data.avatarUrl || "";
+      
+      list.innerHTML += `
+        <div class="ranking-item ${pos <= 3 ? 'top-' + pos : ''}">
+          <div class="rank-pos">#${pos}</div>
+          <img src="${avatar}" class="rank-avatar" alt="bot">
+          <div class="rank-name">${name}</div>
+          <div class="rank-score">${score} pts</div>
+        </div>
+      `;
+      pos++;
+    });
+  } catch (err) {
+    console.error("Error cargando ranking:", err);
+    list.innerHTML = `<div class="ranking-item">Error de conexión.</div>`;
+  }
+}
 
 // ──────────────────────────────────────────────────────────
 // ARRANQUE

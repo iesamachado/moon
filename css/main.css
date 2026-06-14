@@ -407,7 +407,7 @@ html, body {
 /* ── Game main layout ───────────────────────────────────── */
 .game-main {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: auto 1fr auto;
   grid-template-rows: 1fr;
   gap: 20px;
   padding: 20px 24px;
@@ -420,12 +420,13 @@ html, body {
 
 /* ── Registers: columna vertical de filas horizontales ──── */
 .registers-section {
-  grid-column: 1;
+  grid-column: 2;
 }
 .registers-grid {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  margin-top: 45px; /* Espacio para las potencias de 2 en modo cabecera */
 }
 
 /* ── Register card: fila horizontal ancha ───────────────── */
@@ -439,7 +440,7 @@ html, body {
   padding: 14px 24px;
   position: relative;
   transition: var(--transition);
-  overflow: hidden;
+  overflow: visible;
 }
 .register-card::before {
   content: '';
@@ -447,6 +448,7 @@ html, body {
   inset: 0;
   background: linear-gradient(90deg, rgba(0,229,255,0.04) 0%, transparent 40%);
   pointer-events: none;
+  border-radius: inherit;
 }
 .register-card:hover {
   border-color: rgba(0,229,255,0.25);
@@ -510,8 +512,11 @@ html, body {
   border: 1px solid rgba(255,255,255,0.07);
   transition: var(--transition);
   position: relative;
-  overflow: hidden;
-  flex-shrink: 0;
+  overflow: visible;
+  flex-shrink: 1;
+  min-width: 36px;
+  max-width: 72px;
+  width: 100%;
 }
 .bit-cell::before {
   content: '';
@@ -544,6 +549,23 @@ html, body {
   color: rgba(106,133,168,0.55);
   line-height: 1;
   pointer-events: none;
+}
+
+/* Potencia de 2 (1, 2, 4, 8...) encima del bit (solo en la primera fila) */
+.bit-power {
+  position: absolute;
+  top: -65px; /* Para que quede fuera de la register-card y actúe de cabecera */
+  font-family: var(--font-display);
+  font-size: 2.8rem;
+  font-weight: 900;
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+  opacity: 0.6;
+}
+
+/* Ocultar en todos los registros que no sean el primero */
+.register-card:not(:first-child) .bit-power {
+  display: none;
 }
 
 /* Posición del bit (b3, b2, b1, b0) */
@@ -605,7 +627,7 @@ html, body {
 
 /* ── Control Panel ──────────────────────────────────────── */
 .control-panel {
-  grid-column: 2;
+  grid-column: 1;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -651,34 +673,76 @@ html, body {
 }
 
 /* Op buttons */
-.op-selector, .reg-selector {
-  display: flex;
-  flex-wrap: wrap;
+.op-selector {
+  /* Ya tiene grid en el HTML, pero por si acaso */
+  width: 100%;
+}
+.reg-selector {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 6px;
 }
-.op-btn, .reg-btn {
-  padding: 7px 10px;
+
+.op-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: var(--transition);
+  text-align: center;
+  aspect-ratio: 1 / 1;
+}
+
+.op-icon {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  margin-bottom: 2px;
+  filter: drop-shadow(0 0 4px rgba(0, 229, 255, 0.3));
+}
+
+.op-name {
+  font-family: var(--text-mono);
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+.reg-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 7px;
   border: 1px solid rgba(255,255,255,0.1);
   background: rgba(255,255,255,0.04);
   color: var(--text-dim);
   font-family: var(--text-mono);
-  font-size: 0.78rem;
+  font-size: 1.2rem;
   cursor: pointer;
   transition: var(--transition);
-  min-width: 44px;
-  text-align: center;
+  width: 100%;
+  aspect-ratio: 1 / 1;
 }
+
 .op-btn:hover, .reg-btn:hover {
   border-color: rgba(0,229,255,0.4);
   color: var(--accent-cyan);
 }
+.op-btn:hover .op-name { color: var(--accent-cyan); }
+
 .op-btn.active, .reg-btn.active {
   background: rgba(0,229,255,0.15);
   border-color: var(--accent-cyan);
   color: var(--accent-cyan);
   box-shadow: var(--glow-cyan);
 }
+.op-btn.active .op-name { color: var(--accent-cyan); }
 .op-btn.no-energy {
   opacity: 0.35;
   cursor: not-allowed;
@@ -692,12 +756,13 @@ html, body {
 /* Badge de coste en el botón */
 .op-cost {
   display: block;
-  font-size: 0.55rem;
+  font-size: 0.9rem;
+  font-weight: bold;
   letter-spacing: 0;
   color: var(--accent-amber);
-  margin-top: 2px;
+  margin-top: 4px;
   line-height: 1;
-  opacity: 0.8;
+  opacity: 1;
 }
 
 /* Instruction preview */
@@ -773,21 +838,33 @@ html, body {
 }
 .btn-new:hover { background: rgba(180,125,255,0.18); box-shadow: var(--glow-purple); }
 
-/* ── History panel ──────────────────────────────────────── */
-.history-panel {
+/* ── Right Panel & History ──────────────────────────────── */
+.right-panel {
   grid-column: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 200px;
+  max-width: 230px;
+}
+
+.targets-panel {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 20px 16px;
-  min-width: 200px;
-  max-width: 230px;
-  max-height: calc(100vh - 120px);
+}
+
+.history-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 16px;
+  flex: 1;
+  max-height: calc(100vh - 350px);
   display: flex;
   flex-direction: column;
   gap: 12px;
-  position: sticky;
-  top: 84px;
 }
 
 .history-title {
@@ -1125,24 +1202,27 @@ body::after {
 ========================================= */
 .targets-queue {
   display: flex;
-  gap: 8px;
-  background: var(--bg-surface);
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--border-color);
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(0,0,0,0.2);
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.05);
 }
 
 .target-slot {
-  width: 50px;
-  height: 28px;
+  width: 100%;
+  height: 45px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--bg-void);
-  border: 1px dashed var(--border-color);
-  border-radius: 4px;
+  border: 2px dashed var(--border-color, rgba(0,229,255,0.3));
+  border-radius: 8px;
   font-family: 'Share Tech Mono', monospace;
-  font-size: 0.9rem;
+  font-size: 1.4rem;
+  font-weight: bold;
+  letter-spacing: 0.1em;
   color: var(--accent-cyan);
   transition: all 0.3s;
 }
@@ -1381,4 +1461,238 @@ body::after {
   color: #fff;
   font-size: 1rem;
   font-weight: 600;
+}
+
+/* =========================================
+   LEVEL UP TOAST
+========================================= */
+.level-up-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-50px);
+  background: rgba(0, 229, 255, 0.2);
+  border: 1px solid var(--accent-cyan);
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-family: 'Orbitron', sans-serif;
+  font-weight: bold;
+  font-size: 1.2rem;
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.level-up-toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+/* =========================================
+   MENÚ PRINCIPAL (HUB)
+========================================= */
+.menu-card {
+  background: rgba(0, 20, 30, 0.6);
+  border: 1px solid var(--accent-cyan);
+  border-radius: 12px;
+  padding: 30px;
+  width: 250px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.1);
+}
+
+.menu-card:hover {
+  transform: translateY(-5px) scale(1.05);
+  box-shadow: 0 0 30px rgba(0, 229, 255, 0.4);
+  background: rgba(0, 30, 45, 0.8);
+}
+
+/* =========================================
+   AUTENTICACIÓN FIREBASE
+========================================= */
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(10px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.auth-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--accent-cyan);
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+  max-width: 400px;
+  box-shadow: 0 0 30px rgba(0, 229, 255, 0.2);
+}
+
+.auth-title {
+  color: var(--accent-cyan);
+  font-family: 'Orbitron', sans-serif;
+  margin-bottom: 16px;
+}
+
+.auth-sub {
+  color: rgba(255,255,255,0.7);
+  margin-bottom: 30px;
+  line-height: 1.5;
+}
+
+.topbar-user {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(0,0,0,0.3);
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-cyan);
+}
+
+.btn-logout {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: rgba(255,255,255,0.6);
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+}
+
+.btn-logout:hover {
+  background: rgba(255,80,80,0.2);
+  color: #ff5050;
+  border-color: #ff5050;
+}
+
+/* =========================================
+   RANKING GLOBAL
+========================================= */
+.btn-ranking {
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.5);
+  color: #ffd700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Orbitron', sans-serif;
+  font-weight: bold;
+}
+
+.btn-ranking:hover {
+  background: rgba(255, 215, 0, 0.2);
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+}
+
+.ranking-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1500;
+}
+
+.ranking-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--accent-cyan);
+  border-radius: 12px;
+  padding: 30px;
+  width: 100%;
+  max-width: 500px;
+  position: relative;
+  box-shadow: 0 0 30px rgba(0, 229, 255, 0.2);
+}
+
+.ranking-list {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.ranking-item {
+  display: flex;
+  align-items: center;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 8px 16px;
+  gap: 16px;
+  transition: transform 0.2s;
+}
+
+.ranking-item:hover {
+  transform: translateX(5px);
+  background: rgba(0, 229, 255, 0.05);
+  border-color: rgba(0, 229, 255, 0.3);
+}
+
+.ranking-item.top-1 { border-color: #ffd700; box-shadow: 0 0 10px rgba(255,215,0,0.2); }
+.ranking-item.top-2 { border-color: #c0c0c0; }
+.ranking-item.top-3 { border-color: #cd7f32; }
+
+.rank-pos {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: bold;
+  font-size: 1.2rem;
+  color: var(--accent-cyan);
+  width: 35px;
+}
+
+.top-1 .rank-pos { color: #ffd700; }
+.top-2 .rank-pos { color: #c0c0c0; }
+.top-3 .rank-pos { color: #cd7f32; }
+
+.rank-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 229, 255, 0.1);
+}
+
+.rank-name {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #fff;
+}
+
+.rank-score {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 1.1rem;
+  color: var(--accent-green);
+  font-weight: bold;
+}
+
+.ranking-loading {
+  text-align: center;
+  color: rgba(255,255,255,0.5);
+  padding: 20px;
+  font-family: 'Share Tech Mono', monospace;
 }

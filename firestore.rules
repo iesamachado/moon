@@ -1,42 +1,48 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // ─── Collection: users ────────────────────────────────────
-    match /users/{userId} {
-
-      // Cualquier usuario autenticado puede leer y escribir
-      // su PROPIO documento (para actualizar estadísticas)
-      allow read, write: if request.auth != null
-                         && request.auth.uid == userId;
-
-      // El administrador puede leer CUALQUIER documento de la colección
-      allow read: if request.auth != null
-                  && request.auth.token.email == "bernatcosta@iesamachado.org";
-
-      // Creación del propio documento al registrarse
-      allow create: if request.auth != null
-                    && request.auth.uid == userId
-                    && request.resource.data.keys().hasAll([
-                         "email",
-                         "displayName",
-                         "partidasJugadas",
-                         "partidasGanadas"
-                       ])
-                    && request.resource.data.partidasJugadas == 0
-                    && request.resource.data.partidasGanadas == 0;
-
-      // Actualización: el usuario solo puede modificar sus contadores,
-      // no alterar email ni displayName
-      allow update: if request.auth != null
-                    && request.auth.uid == userId
-                    && request.resource.data.email == resource.data.email
-                    && request.resource.data.displayName == resource.data.displayName;
+    
+    // Función auxiliar para comprobar si el usuario está logueado
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Función para comprobar si es profesor (isTeacher == true)
+    function isTeacher() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isTeacher == true;
     }
 
-    // ─── Bloquear todo lo demás por defecto ────────────────────
-    match /{document=**} {
-      allow read, write: if false;
+    // 1. COLECCIÓN DE USUARIOS (users)
+    match /users/{userId} {
+      // Permitimos que CUALQUIERA lea los documentos de usuario.
+      // Esto es OBLIGATORIO para que el Ranking Global pueda funcionar y mostrar a los top 10.
+      allow read: if true;
+      
+      // Un usuario solo puede crear o modificar su propio documento (para guardar sus puntos o ponerse isTeacher).
+      allow create, update: if isSignedIn() && request.auth.uid == userId;
+      
+      // Subcolección: historial de partidas
+      match /games/{gameId} {
+        // Solo el propio dueño de la cuenta puede leer y guardar su historial de partidas.
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
+    
+    // 2. COLECCIÓN DE CLASES (classes)
+    match /classes/{classId} {
+      // Profesores pueden hacer todo.
+      // Alumnos pueden leer para buscar clases y ver a las que pertenecen.
+      // Alumnos pueden actualizar para añadirse al array de students.
+      allow read: if isSignedIn();
+      allow create, delete: if isTeacher();
+      allow update: if isTeacher() || isSignedIn();
+      
+      // Subcolección: Tareas automáticas de la clase
+      match /assignments/{assignmentId} {
+        // Alumnos pueden leer las tareas de sus clases
+        allow read: if isSignedIn();
+        allow write: if isTeacher();
+      }
     }
   }
 }

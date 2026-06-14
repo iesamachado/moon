@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MOON – CPU Binary Game</title>
+  <meta name="description" content="MOON: juego educativo online donde manipulas registros de una CPU virtual para alcanzar un objetivo binario." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/game.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════ GAME SCREEN ═══ -->
+  <div id="screen-game" class="screen active">
+
+    <!-- Top bar -->
+    <header class="topbar">
+      <div class="topbar-brand">
+        <span class="brand-moon">MOON</span>
+        <span class="brand-sep">|</span>
+        <span class="brand-sub">CPU Challenge</span>
+      </div>
+
+      <div class="topbar-user">
+        <button class="btn" onclick="window.location.href='index.html'" style="border: 1px solid var(--accent-cyan); color: var(--accent-cyan); background: transparent; padding: 6px 12px; margin-right: 15px;">🏠 Menú</button>
+        <div class="user-profile hidden" id="user-profile">
+          <div class="user-avatar-wrap">
+            <img src="" id="user-avatar" class="user-avatar" alt="Avatar">
+          </div>
+        </div>
+        <button class="stat-item btn-admin" id="btn-ranking" title="Ranking">🏆 RANKING</button>
+        <div class="user-stats">
+          <span class="stat-item" title="Partidas jugadas"><span class="stat-icon">🎮</span><span id="stat-played">0</span></span>
+          <span class="stat-item" title="Partidas ganadas"><span class="stat-icon">🎯</span><span id="stat-won">0</span></span>
+        </div>
+        <!-- Batería y Recarga -->
+        <div class="battery-section" style="display:flex; align-items:center; gap: 10px;">
+          <div class="battery-display" id="battery-display" title="Energía restante">
+            <span class="battery-label">⚡ ENERGÍA</span>
+            <div class="battery-pips" id="battery-pips"></div>
+            <span class="battery-num"><span id="battery-val">3</span><span class="battery-max">/3</span></span>
+          </div>
+          <button id="btn-reload" class="btn btn-reload" title="Recargar energía y avanzar objetivos">RECARGAR ↻</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="game-main">
+
+      <!-- Control panel (Operaciones a la izquierda) -->
+      <section class="control-panel">
+        <div class="panel-header">
+          <div class="panel-title">INSTRUCCIÓN</div>
+          <button id="btn-help" class="btn-help" title="Ver guía de operaciones">❓ Ayuda</button>
+        </div>
+
+        <div class="controls-row">
+
+          <div class="ctrl-group">
+            <label class="ctrl-label" for="sel-op">Operación</label>
+            <div class="op-selector" id="op-selector" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+              <button class="op-btn active" data-op="INC" data-cost="2">
+                <img class="op-icon" src="img/inc.png" alt="INC">
+                <div class="op-name">INC</div>
+                <span class="op-cost">-2⚡</span>
+              </button>
+              <button class="op-btn" data-op="DEC" data-cost="2">
+                <img class="op-icon" src="img/dec.png" alt="DEC">
+                <div class="op-name">DEC</div>
+                <span class="op-cost">-2⚡</span>
+              </button>
+              <button class="op-btn" data-op="NOT" data-cost="1">
+                <img class="op-icon" src="img/not.png" alt="NOT">
+                <div class="op-name">NOT</div>
+                <span class="op-cost">-1⚡</span>
+              </button>
+              <button class="op-btn" data-op="ROL" data-cost="1">
+                <img class="op-icon" src="img/rol.png" alt="ROL">
+                <div class="op-name">ROL</div>
+                <span class="op-cost">-1⚡</span>
+              </button>
+              <button class="op-btn" data-op="ROR" data-cost="1">
+                <img class="op-icon" src="img/ror.png" alt="ROR">
+                <div class="op-name">ROR</div>
+                <span class="op-cost">-1⚡</span>
+              </button>
+              <button class="op-btn" data-op="MOV" data-cost="1">
+                <img class="op-icon" src="img/mov.png" alt="MOV">
+                <div class="op-name">MOV</div>
+                <span class="op-cost">-1⚡</span>
+              </button>
+              <button class="op-btn" data-op="AND" data-cost="0.5">
+                <img class="op-icon" src="img/and.png" alt="AND">
+                <div class="op-name">AND</div>
+                <span class="op-cost">½⚡</span>
+              </button>
+              <button class="op-btn" data-op="OR" data-cost="0.5">
+                <img class="op-icon" src="img/or.png" alt="OR">
+                <div class="op-name">OR</div>
+                <span class="op-cost">½⚡</span>
+              </button>
+              <button class="op-btn" data-op="XOR" data-cost="0.5">
+                <img class="op-icon" src="img/xor.png" alt="XOR">
+                <div class="op-name">XOR</div>
+                <span class="op-cost">½⚡</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="ctrl-group" id="reg1-group">
+            <label class="ctrl-label" for="sel-reg1">Registro 1</label>
+            <div class="reg-selector" id="reg1-selector">
+              <button class="reg-btn active" data-reg="A">A</button>
+              <button class="reg-btn" data-reg="B">B</button>
+              <button class="reg-btn" data-reg="C">C</button>
+              <button class="reg-btn" data-reg="D">D</button>
+            </div>
+          </div>
+
+          <div class="ctrl-group" id="reg2-group">
+            <label class="ctrl-label" for="sel-reg2">Registro 2</label>
+            <div class="reg-selector" id="reg2-selector">
+              <button class="reg-btn" data-reg="A">A</button>
+              <button class="reg-btn active" data-reg="B">B</button>
+              <button class="reg-btn" data-reg="C">C</button>
+              <button class="reg-btn" data-reg="D">D</button>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="instr-preview" id="instr-preview">
+          <span class="preview-op">INC</span>
+          <span class="preview-r1">A</span>
+          <span class="preview-cost">(-2⚡)</span>
+        </div>
+
+        <button id="btn-execute" class="btn btn-execute">
+          <span class="btn-execute-icon">▶</span>
+          Ejecutar
+        </button>
+
+        <div class="move-counter">
+          Movimientos: <span id="move-count">0</span>
+        </div>
+
+        <button id="btn-new-game" class="btn btn-new">⟳ Nueva Partida</button>
+
+      </section>
+
+      <!-- Registers: 4 filas horizontales, como el tablero físico (Centro) -->
+      <section class="registers-section">
+        <div class="registers-grid" id="registers-grid">
+
+          <!-- ── Registro D ── -->
+          <div class="register-card" id="reg-D" data-reg="D">
+            <div class="reg-name">D</div>
+            <div class="reg-bits" id="bits-D"></div>
+            <div class="reg-meta">
+              <span class="reg-dec" id="dec-D">0</span>
+              <span class="reg-hex" id="hex-D">0x0</span>
+            </div>
+          </div>
+
+          <!-- ── Registro C ── -->
+          <div class="register-card" id="reg-C" data-reg="C">
+            <div class="reg-name">C</div>
+            <div class="reg-bits" id="bits-C"></div>
+            <div class="reg-meta">
+              <span class="reg-dec" id="dec-C">0</span>
+              <span class="reg-hex" id="hex-C">0x0</span>
+            </div>
+          </div>
+
+          <!-- ── Registro B ── -->
+          <div class="register-card" id="reg-B" data-reg="B">
+            <div class="reg-name">B</div>
+            <div class="reg-bits" id="bits-B"></div>
+            <div class="reg-meta">
+              <span class="reg-dec" id="dec-B">0</span>
+              <span class="reg-hex" id="hex-B">0x0</span>
+            </div>
+          </div>
+
+          <!-- ── Registro A (objetivo) ── -->
+          <div class="register-card" id="reg-A" data-reg="A">
+            <div class="reg-name">A</div>
+            <div class="reg-bits" id="bits-A"></div>
+            <div class="reg-meta">
+              <span class="reg-dec" id="dec-A">0</span>
+              <span class="reg-hex" id="hex-A">0x0</span>
+            </div>
+            <div class="reg-target-indicator hidden" id="target-A">🎯 OBJETIVO</div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Panel derecho (Objetivos e Historial) -->
+      <aside class="right-panel">
+        
+        <section class="targets-panel">
+          <div class="history-title" style="margin-bottom:12px; text-align:center;">OBJETIVOS (A)</div>
+          <div class="targets-queue" id="targets-queue">
+            <!-- Slots rendered by JS -->
+            <div class="target-slot empty"></div>
+            <div class="target-slot empty"></div>
+            <div class="target-slot empty"></div>
+            <div class="target-slot empty"></div>
+          </div>
+        </section>
+
+        <!-- History log -->
+        <section class="history-panel">
+          <div class="history-title">HISTORIAL</div>
+          <ul class="history-list" id="history-list">
+            <li class="history-empty">— sin operaciones aún —</li>
+          </ul>
+        </section>
+        
+      </aside>
+
+    </main>
+
+    <!-- Victory overlay -->
+    <div class="victory-overlay hidden" id="victory-overlay">
+      <div class="victory-card">
+        <div class="victory-icon">🌙</div>
+        <h2 class="victory-title">¡OBJETIVO ALCANZADO!</h2>
+        <p class="victory-sub">Registro A = <span id="victory-bits"></span></p>
+        <p class="victory-moves">Completado en <span id="victory-move-count"></span> movimiento(s)</p>
+        <button id="btn-next-round" class="btn btn-execute">Nueva Ronda</button>
+      </div>
+    </div>
+
+    <!-- Game Over overlay (sin bateria) -->
+    <div class="gameover-overlay hidden" id="gameover-overlay">
+      <div class="gameover-card">
+        <div class="gameover-icon">🔋</div>
+        <h2 class="gameover-title">SIN ENERGÍA</h2>
+        <p class="gameover-sub">Has perdido por falta de energía o por acumular demasiados objetivos.</p>
+        
+        <div class="gameover-score-box">
+          <div class="score-title">🏆 OBJETIVOS CONSEGUIDOS 🏆</div>
+          <div class="score-number" id="gameover-score-val">0</div>
+          <div class="score-msg" id="gameover-score-msg"></div>
+        </div>
+
+        <p class="gameover-target">Último objetivo pendiente: <span id="gameover-bits"></span></p>
+        <button id="btn-retry" class="btn btn-execute">&#x21ba; Reintentar</button>
+      </div>
+    </div>
+
+    <!-- Ranking overlay -->
+    <div class="ranking-overlay hidden" id="ranking-overlay">
+      <div class="ranking-card">
+        <button id="btn-close-ranking" class="btn-close-help">❌</button>
+        <h2 class="help-title">🏆 Top Hackers Globales</h2>
+        <div class="ranking-list" id="ranking-list">
+          <!-- Dinámico -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Help Modal (Guía para alumnos) -->
+    <div class="help-overlay hidden" id="help-overlay">
+      <div class="help-card">
+        <button id="btn-close-help" class="btn-close-help">❌</button>
+        <h2 class="help-title">📖 Guía de Operaciones</h2>
+        <p class="help-sub">¿Qué hace cada instrucción de la CPU?</p>
+        <div class="help-content">
+          <div class="help-item"><span class="h-badge">INC (-2⚡)</span> <strong>Suma 1</strong>. Ej: <code>0000</code> ➔ <code>0001</code></div>
+          <div class="help-item"><span class="h-badge">DEC (-2⚡)</span> <strong>Resta 1</strong>. Ej: <code>0001</code> ➔ <code>0000</code></div>
+          <div class="help-item"><span class="h-badge">NOT (-1⚡)</span> <strong>Invertir</strong>. Cambia ceros por unos. Ej: <code>1010</code> ➔ <code>0101</code></div>
+          <div class="help-item"><span class="h-badge">ROL (-1⚡)</span> <strong>Rotar Izquierda</strong>. El primer bit pasa al final. Ej: <code><b>1</b>010</code> ➔ <code>010<b>1</b></code></div>
+          <div class="help-item"><span class="h-badge">ROR (-1⚡)</span> <strong>Rotar Derecha</strong>. El último bit pasa al principio. Ej: <code>101<b>0</b></code> ➔ <code><b>0</b>101</code></div>
+          <div class="help-item"><span class="h-badge">MOV (-1⚡)</span> <strong>Copiar</strong>. Pega Reg1 en Reg2. Ej: <code>1111</code> ➔ <code>1111</code></div>
+          <div class="help-item"><span class="h-badge">AND (½⚡)</span> <strong>Y (intersección)</strong>. Solo da 1 si AMBOS son 1.<br>Ej: <code>1010</code> AND <code>1100</code> ➔ <code>1000</code></div>
+          <div class="help-item"><span class="h-badge">OR (½⚡)</span> <strong>O (unión)</strong>. Da 1 si ALGUNO es 1.<br>Ej: <code>1010</code> OR <code>0100</code> ➔ <code>1110</code></div>
+          <div class="help-item"><span class="h-badge">XOR (½⚡)</span> <strong>O exclusivo</strong>. Da 1 solo si son DIFERENTES.<br>Ej: <code>1010</code> XOR <code>1100</code> ➔ <code>0110</code></div>
+        </div>
+        <div class="help-footer">
+          Para más detalles de las reglas cooperativas, consulta el <a href="moon-manual-es.pdf" target="_blank" class="help-link">Manual Oficial del Juego (PDF)</a>.
+        </div>
+      </div>
+    </div>
+    
+    <div id="level-up-toast" class="level-up-toast">¡SISTEMA ACTUALIZADO A <span id="toast-bits"></span> BITS!</div>
+  </div>
+
+  <script type="module" src="js/game.js"></script>
+</body>
+</html>
