@@ -76,6 +76,17 @@
     </div>
   </div>
 
+  <!-- Student History Modal -->
+  <div id="student-history-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
+    <div style="background: var(--bg-card, #0f1c2e); border: 1px solid var(--accent-cyan); border-radius: 12px; padding: 30px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; box-shadow: 0 0 30px rgba(0,229,255,0.2); position: relative;">
+      <h3 id="student-history-title" style="margin-top: 0; color: var(--accent-cyan); font-family: 'Orbitron', sans-serif;">Historial de Partidas</h3>
+      <button id="btn-close-history" class="btn btn-outline" style="position: absolute; top: 20px; right: 20px; padding: 4px 10px; font-size: 0.8rem;">Cerrar</button>
+      <div id="student-history-list" style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">
+        <p style="color: rgba(255,255,255,0.5);">Cargando historial...</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Custom Modal Overlay -->
   <div id="custom-modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
     <div style="background: var(--bg-card, #0f1c2e); border: 1px solid var(--accent-cyan); border-radius: 12px; padding: 30px; width: 90%; max-width: 450px; box-shadow: 0 0 30px rgba(0,229,255,0.2);">

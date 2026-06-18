@@ -585,11 +585,11 @@ function initEvents() {
 // ─────────────────────────────────────────────────────────
 // AUTENTICACIÓN LOCAL PARA EL JUEGO
 // ─────────────────────────────────────────────────────────
-setupAuthListener((user, isTeacher, profile) => {
+setupAuthListener((user, isTeacher) => {
   if (user) {
     currentUser = user;
-    $("user-avatar").src = profile.avatarUrl;
-    if($("user-name")) $("user-name").textContent = profile.anonName;
+    if($("user-avatar")) $("user-avatar").src = generateAvatar(user.uid);
+    if($("user-name")) $("user-name").textContent = anonymizeName(user.displayName);
     fetchUserStats(user.uid);
   }
 });

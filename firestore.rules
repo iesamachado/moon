@@ -23,8 +23,9 @@ service cloud.firestore {
       
       // Subcolección: historial de partidas
       match /games/{gameId} {
-        // Solo el propio dueño de la cuenta puede leer y guardar su historial de partidas.
-        allow read, write: if isSignedIn() && request.auth.uid == userId;
+        // Solo el propio dueño de la cuenta y los profesores pueden leer el historial de partidas.
+        allow read: if (isSignedIn() && request.auth.uid == userId) || isTeacher();
+        allow write: if isSignedIn() && request.auth.uid == userId;
       }
     }
     

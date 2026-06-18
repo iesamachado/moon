@@ -1,6 +1,6 @@
 // js/classes.js
 import { currentUser, setupAuthListener } from "./auth.js";
-import { db, collection, addDoc, query, where, getDocs, updateDoc, doc, getDoc, arrayUnion, serverTimestamp } from "./firebase-config.js";
+import { db, collection, addDoc, query, where, getDocs, updateDoc, doc, getDoc, arrayUnion, serverTimestamp, orderBy, limit } from "./firebase-config.js";
 import { fetchClassroomCourses, importClassroomStudents, loginTeacher, getTeacherToken, createClassroomAssignment, syncClassroomGrades } from "./classroom.js";
 
 const $ = id => document.getElementById(id);
@@ -97,6 +97,61 @@ window.triggerSyncNotes = async (targetPoints, courseWorkId) => {
     }
   }
 };
+
+// ════════════════════════════════════════════
+// LÓGICA DE HISTORIAL DE ALUMNOS
+// ════════════════════════════════════════════
+window.viewStudentHistory = async (uid, name) => {
+  if (!isUserTeacher) return;
+  
+  const overlay = $("student-history-overlay");
+  const title = $("student-history-title");
+  const list = $("student-history-list");
+  
+  title.textContent = `Partidas de ${name}`;
+  list.innerHTML = "<p style='color: rgba(255,255,255,0.5);'>Cargando historial...</p>";
+  overlay.style.display = "flex";
+  
+  try {
+    const q = query(collection(db, "users", uid, "games"), orderBy("timestamp", "desc"), limit(50));
+    const snap = await getDocs(q);
+    
+    if (snap.empty) {
+      list.innerHTML = "<p style='color: rgba(255,255,255,0.5);'>El alumno aún no ha jugado ninguna partida.</p>";
+      return;
+    }
+    
+    let html = "";
+    snap.forEach(docSnap => {
+      const data = docSnap.data();
+      const date = data.timestamp ? data.timestamp.toDate().toLocaleString() : "Fecha desconocida";
+      html += `
+        <div style="display: flex; justify-content: space-between; padding: 10px 15px; background: rgba(255,255,255,0.05); border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);">
+          <span style="color: rgba(255,255,255,0.8);">${date}</span>
+          <span style="color: var(--accent-cyan); font-family: 'Share Tech Mono', monospace; font-weight: bold; font-size: 1.1rem;">${data.score} pts</span>
+        </div>
+      `;
+    });
+    list.innerHTML = html;
+  } catch (err) {
+    console.error("Error cargando historial de alumno:", err);
+    list.innerHTML = "<p style='color: var(--accent-red);'>Error cargando el historial.</p>";
+  }
+};
+
+if ($("btn-close-history")) {
+  $("btn-close-history").addEventListener("click", () => {
+    $("student-history-overlay").style.display = "none";
+  });
+}
+
+if ($("student-history-overlay")) {
+  $("student-history-overlay").addEventListener("click", (e) => {
+    if (e.target.id === "student-history-overlay") {
+      $("student-history-overlay").style.display = "none";
+    }
+  });
+}
 
 // ════════════════════════════════════════════
 // LÓGICA DE PROFESORES
@@ -401,22 +456,37 @@ async function loadClassStudents(classId, classData) {
 
   const registeredUIDs = Array.from(registeredSet);
 
-  let studentsData = [];
-  // Fetch highScores
-  for (const uid of registeredUIDs) {
+  const promises = registeredUIDs.map(async (uid) => {
     try {
       const snap = await getDoc(doc(db, "users", uid));
       if (snap.exists()) {
         const udata = snap.data();
-        studentsData.push({
+        let actualHighScore = udata.highScore || 0;
+        
+        try {
+          const qGames = query(collection(db, "users", uid, "games"), orderBy("score", "desc"), limit(1));
+          const snapGames = await getDocs(qGames);
+          if (!snapGames.empty) {
+            const bestScore = snapGames.docs[0].data().score || 0;
+            if (bestScore > actualHighScore) {
+              actualHighScore = bestScore;
+            }
+          }
+        } catch(e) { console.error("Error fetching true high score:", e); }
+
+        return {
           uid: uid,
           name: udata.displayNameAnonymized || udata.email || "Alumno Anónimo",
-          score: udata.highScore || 0,
+          score: actualHighScore,
           played: udata.played || 0
-        });
+        };
       }
     } catch(e) { console.error("Error fetch student:", e); }
-  }
+    return null;
+  });
+
+  const results = await Promise.all(promises);
+  let studentsData = results.filter(s => s !== null);
 
   // Ordenar por puntuación de mayor a menor
   studentsData.sort((a, b) => b.score - a.score);
@@ -426,8 +496,9 @@ async function loadClassStudents(classId, classData) {
   if (isUserTeacher) {
     // PROFESOR: Mostrar listado completo + pendientes
     for (const st of studentsData) {
+      const safeName = st.name.replace(/'/g, "\\'");
       html += `
-        <div class="student-row">
+        <div class="student-row" onclick="window.viewStudentHistory('${st.uid}', '${safeName}')" style="cursor: pointer;" title="Ver historial de partidas">
           <div>
             <span class="student-name" style="display:block;">${st.name}</span>
             <span style="font-size: 0.8rem; color: rgba(255,255,255,0.5);">${st.played} partidas jugadas</span>
