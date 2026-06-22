@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import { 
-  auth, db, GoogleAuthProvider, signInWithPopup, doc, setDoc, getDoc, collection, addDoc, query, where, getDocs, updateDoc, arrayUnion
+  auth, db, GoogleAuthProvider, signInWithPopup, doc, setDoc, getDoc, collection, addDoc, query, where, getDocs, updateDoc, arrayUnion, orderBy, limit
 } from "./firebase-config.js";
 
 // Scopes requeridos para gestionar Classroom
@@ -207,7 +207,18 @@ export async function syncClassroomGrades(courseId, classDocId, task) {
     if (!email || !emailToGoogleId[email]) continue;
     
     const googleUserId = emailToGoogleId[email];
-    const highScore = userData.highScore || 0;
+    let highScore = userData.highScore || 0;
+    
+    try {
+      const qGames = query(collection(db, "users", member, "games"), orderBy("score", "desc"), limit(1));
+      const snapGames = await getDocs(qGames);
+      if (!snapGames.empty) {
+        const bestScore = snapGames.docs[0].data().score || 0;
+        if (bestScore > highScore) {
+          highScore = bestScore;
+        }
+      }
+    } catch(e) { console.error("Error fetching true high score for sync:", e); }
     
     // Rúbrica: (highScore / target) * 10
     let grade = (highScore / target) * 10;
